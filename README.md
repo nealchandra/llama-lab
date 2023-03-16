@@ -34,4 +34,6 @@ conda install pytorch torchvision torchaudio git -c pytorch
 
 ## Run
 
+```
 python ./cli.py --help
+```

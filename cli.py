@@ -18,13 +18,23 @@ def finetune(model_path, tokenizer_path, output_path):
 @click.option('-m', '--model_path', type=click.Path(exists=True), required=True, help='Path to the base LLaMA model')
 @click.option('-t', '--tokenizer_path', type=click.Path(exists=True), required=True, help='Path to the LLaMA tokenizer.model')
 @click.option('-f', '--finetune_path', type=click.Path(exists=True), required=True, help='Path to the finetuned model')
-@click.option('-p', '--prompt', required=True, help='Prompt for the inference')
+@click.option('--prompt', required=True, help='Prompt for the inference')
 @click.option('--max_length', default=250, help='Max length for inference')
 def inference(model_path, tokenizer_path, finetune_path, prompt, max_length):
     return inference_module.inference(model_path, tokenizer_path, finetune_path, prompt, max_length)
 
+@click.command()
+@click.option('-m', '--model_path', type=click.Path(exists=True), required=True, help='Path to the base LLaMA model')
+@click.option('-t', '--tokenizer_path', type=click.Path(exists=True), required=True, help='Path to the LLaMA tokenizer.model')
+@click.option('-p', '--pt_path', required=True, help='Prompt for the inference')
+@click.option('--prompt', required=True, help='Prompt for the inference')
+@click.option('--max_length', default=250, help='Max length for inference')
+def inference_4bit_llama(model_path, tokenizer_path, pt_path, prompt, max_length):
+    return inference_module.inference_4bit_llama(model_path, tokenizer_path, pt_path, prompt, max_length)
+
 cli.add_command(finetune)
 cli.add_command(inference)
+cli.add_command(inference_4bit_llama)
 
 if __name__ == '__main__':
     cli()

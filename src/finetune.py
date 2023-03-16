@@ -11,7 +11,6 @@ from transformers import AutoTokenizer, AutoConfig, LLaMAForCausalLM, LLaMAToken
 from peft import prepare_model_for_int8_training, LoraConfig, get_peft_model, TaskType
 
 
-# optimized for RTX 4090. for larger GPUs, increase some of these?
 MICRO_BATCH_SIZE = 4  # this could actually be 5 but i like powers of 2
 BATCH_SIZE = 256
 GRADIENT_ACCUMULATION_STEPS = BATCH_SIZE // MICRO_BATCH_SIZE
@@ -53,14 +52,19 @@ def finetune(model_path, tokenizer_path, output_path):
 
     from src.data.alpaca.prompt import prompt
 
-    data = data.shuffle().map(
-        lambda data_point: tokenizer(
-            prompt.generate_prompt(data_point),
+    def tokenize(data):
+        result = tokenizer(
+            prompt.generate_prompt(data),
             truncation=True,
-            max_length=CUTOFF_LEN,
+            max_length=CUTOFF_LEN + 1,
             padding="max_length",
         )
-    )
+        return {
+            "input_ids": result["input_ids"][:-1],
+            "attention_mask": result["attention_mask"][:-1],
+        }
+
+    data = data.shuffle().map(lambda x: tokenize(x))
 
     trainer = transformers.Trainer(
         model=model,
@@ -72,7 +76,7 @@ def finetune(model_path, tokenizer_path, output_path):
             num_train_epochs=EPOCHS,
             learning_rate=LEARNING_RATE,
             fp16=True,
-            logging_steps=1,
+            logging_steps=10,
             output_dir=output_path,
             save_total_limit=3,
         ),
