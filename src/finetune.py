@@ -8,7 +8,7 @@ import bitsandbytes as bnb
 from datasets import load_dataset
 import transformers
 from transformers import AutoTokenizer, AutoConfig, LLaMAForCausalLM, LLaMATokenizer
-from peft import prepare_model_for_int8_training, LoraConfig, get_peft_model, TaskType
+from peft import prepare_model_for_int8_training, LoraConfig, get_peft_model, TaskType, PeftModel, tuners
 
 
 MICRO_BATCH_SIZE = 4  # this could actually be 5 but i like powers of 2
@@ -25,6 +25,22 @@ LORA_DROPOUT = 0.05
 ## POTENTIAL ARGS
 # LORA_ALPHA = 8
 # LORA_DROPOUT = 0.1
+
+def merge(model_path, peft_path, output_path):
+    model = transformers.LLaMAForCausalLM.from_pretrained(model_path)
+    model = PeftModel.from_pretrained(model, peft_path, device_map={'': 0})
+    model.eval()
+
+    key_list = [key for key, _ in model.base_model.model.named_modules() if "lora" not in key]
+    for key in key_list:
+        parent, target, target_name = model.base_model._get_submodules(key)
+        if isinstance(target, tuners.lora.Linear):
+            bias = target.bias is not None
+            new_module = torch.nn.Linear(target.in_features, target.out_features, bias=bias)
+            model.base_model._replace_module(parent, target_name, new_module, target)
+
+    model = model.base_model.model
+    model.save_pretrained(output_path, use_temp_dir=False)
 
 def finetune(model_path, tokenizer_path, output_path):
     model = LLaMAForCausalLM.from_pretrained(
