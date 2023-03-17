@@ -9,4 +9,5 @@ safetensors==0.3.0
 sentencepiece
 tqdm
 click
+peft
 git+https://github.com/huggingface/transformers

@@ -32,10 +32,10 @@ class Stream(transformers.StoppingCriteria):
 
 
 def inference(model_path, tokenizer_path, peft_path, prompt, max_length):
-    model = transformers.LLaMAForCausalLM.from_pretrained(model_path, load_in_8bit=True, device_map='auto')
+    model = transformers.LlamaForCausalLM.from_pretrained(model_path, load_in_8bit=True, device_map='auto')
     model = PeftModel.from_pretrained(model, peft_path, device_map={'': 0})
 
-    tokenizer = transformers.LLaMATokenizer.from_pretrained(tokenizer_path)
+    tokenizer = transformers.LlamaTokenizer.from_pretrained(tokenizer_path)
     batch = tokenizer(TRAINING_TEXT_NO_INPUT.format(instruction=prompt), return_tensors="pt")
 
     generation_config = transformers.GenerationConfig(
@@ -63,7 +63,7 @@ def inference(model_path, tokenizer_path, peft_path, prompt, max_length):
 def inference_4bit_llama(model_path, tokenizer_path, pt_path, prompt, max_length):
     model = load_quantized(model_path, pt_path)
 
-    tokenizer = transformers.LLaMATokenizer.from_pretrained(tokenizer_path)
+    tokenizer = transformers.LlamaTokenizer.from_pretrained(tokenizer_path)
     batch = tokenizer(TRAINING_TEXT_NO_INPUT.format(instruction=prompt), return_tensors="pt")
 
     generation_config = transformers.GenerationConfig(

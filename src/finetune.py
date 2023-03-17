@@ -7,7 +7,7 @@ import torch.nn as nn
 import bitsandbytes as bnb
 from datasets import load_dataset
 import transformers
-from transformers import AutoTokenizer, AutoConfig, LLaMAForCausalLM, LLaMATokenizer
+from transformers import AutoTokenizer, AutoConfig, LlamaForCausalLM, LlamaTokenizer
 from peft import prepare_model_for_int8_training, LoraConfig, get_peft_model, TaskType, PeftModel, tuners
 
 
@@ -27,10 +27,12 @@ LORA_DROPOUT = 0.05
 # LORA_DROPOUT = 0.1
 
 def merge(model_path, peft_path, output_path):
-    model = transformers.LLaMAForCausalLM.from_pretrained(model_path)
+    print('Merging models.')
+    model = transformers.LlamaForCausalLM.from_pretrained(model_path)
     model = PeftModel.from_pretrained(model, peft_path, device_map={'': 0})
     model.eval()
 
+    print('Copying modules.')
     key_list = [key for key, _ in model.base_model.model.named_modules() if "lora" not in key]
     for key in key_list:
         parent, target, target_name = model.base_model._get_submodules(key)
@@ -39,16 +41,17 @@ def merge(model_path, peft_path, output_path):
             new_module = torch.nn.Linear(target.in_features, target.out_features, bias=bias)
             model.base_model._replace_module(parent, target_name, new_module, target)
 
+    print('Saving.')
     model = model.base_model.model
     model.save_pretrained(output_path, use_temp_dir=False)
 
 def finetune(model_path, tokenizer_path, output_path):
-    model = LLaMAForCausalLM.from_pretrained(
+    model = LlamaForCausalLM.from_pretrained(
         model_path,
         load_in_8bit=True,
         device_map="auto",
     )
-    tokenizer = LLaMATokenizer.from_pretrained(
+    tokenizer = LlamaTokenizer.from_pretrained(
        tokenizer_path, add_eos_token=True
     )
 
@@ -64,9 +67,9 @@ def finetune(model_path, tokenizer_path, output_path):
     )
     model = get_peft_model(model, config)
     tokenizer.pad_token_id = 0  # unk. we want this to be different from the eos token
-    data = load_dataset("json", data_files="./src/data/alpaca/alpaca_data.json")
+    data = load_dataset("json", data_files="data/alpaca_data.json")
 
-    from src.data.alpaca.prompt import prompt
+    from src.prompts.alpaca import prompt
 
     def tokenize(data):
         result = tokenizer(
