@@ -1,16 +1,10 @@
-import sys
-import os
 import curses
 import zmq
-from pathlib import Path
 
 import torch
 import transformers
 
 from peft import get_peft_model, PeftModel
-
-sys.path.insert(0, os.path.join(os.path.dirname( __file__ ), str(Path("../repositories/GPTQ-for-LLaMa"))))
-import llama
 
 
 def inference(prompt):
@@ -30,14 +24,8 @@ def inference(prompt):
     # curses.endwin()
     
     # send prompt to zmq worker
-    socket.send(prompt)
+    socket.send(prompt.encode('utf-8'))
 
     # print the response from zmq worker
     response = socket.recv()
     print(response)
-
-def load_quantized(model_path, pt_path):
-    load_quant = llama.load_quant
-    model = load_quant(model_path, pt_path, 4)
-    model = model.to(torch.device('cuda:0'))
-    return model

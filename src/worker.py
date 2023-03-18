@@ -1,8 +1,13 @@
-import zmq
-import inference
-improt process
+import sys
+import os
+from pathlib import Path
 
-from inference import load_model
+import torch
+import transformers
+import zmq
+
+sys.path.insert(0, os.path.join(os.path.dirname( __file__ ), str(Path("../repositories/GPTQ-for-LLaMa"))))
+import llama
 
 TRAINING_TEXT_NO_INPUT= """Below is an instruction that describes a task. Write a response that appropriately completes the request.
 
@@ -23,7 +28,7 @@ class Stream(transformers.StoppingCriteria):
         self.console.refresh()
         return False
 
-def load_model(model_path, tokenizer_path, peft_path):
+def load_model(model_path, tokenizer_path, peft_path, int4):
     if int4:
         model = load_quantized(model_path, peft_path)
     else:
@@ -32,11 +37,17 @@ def load_model(model_path, tokenizer_path, peft_path):
     tokenizer = transformers.LlamaTokenizer.from_pretrained(tokenizer_path)
     return model, tokenizer
 
-context = zmq.Context()
-socket = context.socket(zmq.REP)
-socket.bind("tcp://*:5555")
+def load_quantized(model_path, pt_path):
+    load_quant = llama.load_quant
+    model = load_quant(model_path, pt_path, 4)
+    model = model.to(torch.device('cuda:0'))
+    return model
 
 def run_worker(model_path, tokenizer_path, peft_path, int4=False):
+    context = zmq.Context()
+    socket = context.socket(zmq.REP)
+    socket.bind("tcp://*:5555")
+
     model, tokenizer = load_model(model_path, tokenizer_path, peft_path, int4)
     generation_config = transformers.GenerationConfig(
         temperature=0.1,
@@ -67,4 +78,4 @@ def run_worker(model_path, tokenizer_path, peft_path, int4=False):
             )
 
             #  Send reply back to client
-            socket.send(tokenizer.decode(out[0]))
+            socket.send(tokenizer.decode(out[0]).encode('utf-8'))
