@@ -10,4 +10,6 @@ sentencepiece
 tqdm
 click
 peft
+datasets
+zmq
 git+https://github.com/huggingface/transformers
